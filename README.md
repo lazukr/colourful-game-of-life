@@ -35,7 +35,7 @@ There are 5 colours to choose from. Select on the colour to change the colour yo
 
 | Name | Function |
 | - | - |
-| Play | Starts the simulation. Updates every 50 ms. **Slows down significantly when there are more than 100 active cells to update** |
+| Play | Starts the simulation. Updates every 50 ms. **Slows down significantly when there are more than 100 active cells to update**. |
 | Pause | Pauses the simulation. |
 | Clear | Resets the board back to empty. |
 | Step | Updates the board once. |

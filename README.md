@@ -7,3 +7,15 @@ It tries to be efficient in that it adds cells to an update object. The update l
 Colour blends based on the alive cells only.
 
 This was built using [ZIM](https://zimjs.com/).
+
+# How to Run
+1. Download the repository
+1. Open the terminal
+1. 
+    ```
+    yarn start
+    ```
+1. Open your browser and go to
+    ```
+    localhost:8085
+    ```

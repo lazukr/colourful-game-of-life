@@ -40,3 +40,4 @@ There are 5 colours to choose from. Select on the colour to change the colour yo
 | Clear | Resets the board back to empty. |
 | Step | Updates the board once. |
 | List | Prints out all tiles in the current update list. Open the development console (F12) to see it. |
+| Colour Deviation | Introduces randomness to the blending process by selecting a random value between the blended rgb + or - selected value. |

@@ -1,8 +1,23 @@
+import { white } from "ansi-colors";
+
 const scaling = "fit"; // this will resize to fit inside the screen dimensions
-const width = 1600;
+const width = 2800;
 const height = 1600;
-const color = zim.light; // ZIM colors like green, blue, pink, faint, clear, etc.
-const outerColor = zim.dark; // any HTML colors like "violet", "#333", etc. are fine to use
+const color = zim.dark; // ZIM colors like green, blue, pink, faint, clear, etc.
+const outerColor = zim.darker; // any HTML colors like "violet", "#333", etc. are fine to use
+
+const HTMLColors = {
+    Red: "#FF0000",
+    Blue: "#0000FF",
+    Green: "#00FF00",
+    Yellow: "#FFFF00",
+    Black: "#000000",
+}
+
+const maxrgbValue = 255;
+let deviation = 0;
+const sliderMin = 0;
+const sliderMax = 30;
 
 const frame = new Frame(scaling, width, height, color, outerColor);
 frame.on("ready", () => { // ES6 Arrow Function - like function(){}
@@ -11,19 +26,19 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
     let stageW = frame.width;
     let stageH = frame.height;
 
-    const ux = new Container(stageW/2, stageH)
+    const ux = new Container(stageW/4, stageH)
         .pos(0, 0, RIGHT);
 
-    const cp = new ColorPicker(500, [red, blue, yellow, green, black], 5);
+    const cp = new ColorPicker(500, [HTMLColors.Red, HTMLColors.Blue, HTMLColors.Yellow, HTMLColors.Green, HTMLColors.Black], 5);
     cp.center(ux)
         .pos(100, 100);
 
-    const boardContainer = new Container(stageW/2, stageH)
-        .addTo();
+    const boardContainer = new Container(stageW, stageH)
+        .pos(0, 0);
 
     const tileSize = 20;
-    const boardW = 30;
-    const boardH = 30;
+    const boardW = 60;
+    const boardH = 60;
 
     const board = new Board(tileSize, boardW, boardH)
         .center(boardContainer);
@@ -49,45 +64,70 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
         .center(ux)
         .pos(100, 550);
 
-    const hexToRgb = (hex) => {
-        let c;
-        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-            c= hex.substring(1).split('');
-            if(c.length== 3){
-                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-            }
-            c= '0x'+c.join('');
-            return [(c>>16)&255, (c>>8)&255, c&255];
-        }
-        throw new Error('Bad Hex');
-    }
+    const colourDeviation = new Label({
+        text: "Colour Deviation",
+        size: 50,
+        color: "white",
+    })
+        .center(ux)
+        .pos(100, 700);
 
-    const rgbToHex = (rgb) => {
-        let hex = rgb.toString(16);
-        if (hex.length < 2) {
-             hex = "0" + hex;
-        }
-        return hex;
-    }
+    const slider = new Slider({
+        min: sliderMin,
+        max: sliderMax,
+        step: 1,
+        useTicks: true,
+        barLength: 500,
+        barColor: "#eee",
+    })
+        .center(ux)
+        .pos(100, 800);
 
-    const colourAverage = (list) => {
-        const num = list.length;
-        const rgb = list.map(x => hexToRgb(x));
-        const result = rgb.reduce((acc, cur) => {
-            acc[0] += cur[0];
-            acc[1] += cur[1];
-            acc[2] += cur[2];
-            return acc;
-        }, [0, 0, 0]);
+    const zero = new Label({
+        text: `${sliderMin}`,
+        size: 50,
+        color: "white",
+    })
+        .center(ux)
+        .pos(100, 850);
 
-        const averaged = result.map(x => Math.ceil(x / num));
-        return `#${averaged.map(x => rgbToHex(x)).join('')}`;
-    }
+    const ten = new Label({
+        text: `${sliderMax}`,
+        size: 50,
+        color: "white",
+    })
+        .center(ux)
+        .pos(600, 850);
+
+    const deviationLabel = new Label({
+        text: "0",
+        size: 50,
+        color: "red",
+    })
+        .center(ux)
+        .pos(350, 900);
+
+    slider.on("change", () => {
+        deviation = slider.currentValue;
+        deviationLabel.text = slider.currentValue;
+    });
+
+
+    const explanation = new Label({
+        text: "Select colour, fill cells, click play.\n\nSet slider for how much randomness is involved when blending.",
+        labelWidth: 500,
+        color: "white",
+        size: 50,
+    })
+        .center(ux)
+        .pos(100, 1000);
+
 
     const updateGroup = {};
 
     board.tiles.children.forEach(tile => {
         board.setData(tile, false);
+        board.setColor(tile, light);
     });
 
     board.tiles.tap((e) => {
@@ -114,7 +154,7 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
         } else {
             const index = board.getIndexes(tile);
             const id = `${index.col},${index.row}`;
-            board.setColor(tile, "#eee");
+            board.setColor(tile, light);
             board.setData(tile, false);
 
             if (updateGroup[id]) {
@@ -159,11 +199,13 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
                 return false;
             } else { // dead
                 if (alive === 3) {
-                    const newColour = colourAverage(aroundData);
+                    const newColour = colourAverage(aroundData)
+                        .map(c => deviate(c));
+                    const hex = fullRgbToHex(newColour);
                     return { // reviving
                         tile: tile,
-                        color: newColour,
-                        value: newColour,
+                        color: hex,
+                        value: hex,
                     };
                 }
                 if (updateGroup[id]) {
@@ -195,9 +237,9 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
 
         updateList.forEach(item => {
             board.setData(item.tile, item.value);
-            board.setColor(item.tile, item.color || "#eee");
-            stage.update();
+            board.setColor(item.tile, item.color || light);
         });
+        stage.update();
     }
 
     list.on("mousedown", () => {
@@ -222,7 +264,7 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
         const list = board.tiles.children;
         list.forEach(tile => {
             board.setData(tile, false);
-            board.setColor(tile, "#eee");
+            board.setColor(tile, light);
         });
         stage.update();
     });
@@ -231,13 +273,68 @@ frame.on("ready", () => { // ES6 Arrow Function - like function(){}
         if (interval) {
             clearInterval(interval);
             interval = null;
-            stage.update();
+            board.update();
         }
     });
 
     play.on("mousedown", () => {
-        interval = setInterval(update, 50);
+        if (interval) {
+            return;
+        }
+        interval = setInterval(update, 1000/10);
     });
 
     stage.update(); // this is needed to show any changes
 }); // end of ready
+
+const hexToRgb = (hex) => {
+    let c;
+    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+        c= hex.substring(1).split('');
+        if(c.length== 3){
+            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c= '0x'+c.join('');
+        return [(c>>16)&255, (c>>8)&255, c&255];
+    }
+    throw new Error('Bad Hex');
+}
+
+const rgbToHex = (rgb) => {
+    let hex = rgb.toString(16);
+    if (hex.length < 2) {
+         hex = "0" + hex;
+    }
+    return hex;
+}
+
+const fullRgbToHex = (rgb) => {
+    return `#${rgb.map(x => rgbToHex(x)).join('')}`;
+}
+
+const colourAverage = (list) => {
+    const num = list.length;
+    const rgb = list.map(x => hexToRgb(x));
+    const result = rgb.reduce((acc, cur) => {
+        acc[0] += cur[0];
+        acc[1] += cur[1];
+        acc[2] += cur[2];
+        return acc;
+    }, [0, 0, 0]);
+
+    return result.map(x => Math.ceil(x / num));
+}
+
+const deviate = (value) => {
+    if (!deviation) {
+        return value;
+    }
+
+    const low = value > deviation 
+        ? value - deviation 
+        : 0;
+    const high = value < maxrgbValue - deviation 
+        ? value + deviation 
+        : maxrgbValue;
+    return  Math.floor((high - low) * Math.random()) + low;
+}
